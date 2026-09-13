@@ -1,9 +1,9 @@
-# 🕵️‍♀️ Análise de Tráfego de Rede com Wireshark
+# Análise de Tráfego de Rede com Wireshark
 ### ARP Spoofing & TCP SYN — Tráfego Real vs. Tráfego sob Ataque
 
 ---
 
-## 🎯 Objetivo
+## Objetivo
 
 Capturar tráfego da minha própria rede doméstica e comparar com um pcap de laboratório contendo um ataque simulado de **ARP Spoofing**, com o objetivo de identificar, na prática, os sinais que diferenciam uma rede funcionando normalmente de uma rede comprometida — olhando tanto para o comportamento do protocolo **ARP** quanto para a estrutura dos pacotes **TCP (SYN)**.
 
@@ -21,7 +21,6 @@ Capturar tráfego da minha própria rede doméstica e comparar com um pcap de la
 | | Captura própria | Pcap de laboratório |
 |---|---|---|
 | **Interface** | Ethernet (Npcap) | — (arquivo pronto, sem captura ao vivo) |
-| **Filtro de captura** | Nenhum | — |
 | **Duração** | ~83 segundos | ~209 segundos (simulado) |
 | **Pacotes** | 1075 | 184 |
 
@@ -51,17 +50,26 @@ O protocolo ARP associa um IP a um MAC na rede local e **não tem autenticação
 
 ---
 
-## 🔍 Observações e conclusões
+##  Observações e conclusões
 
-✅ **O que se comportou como esperado:** o three-way handshake TCP (SYN → SYN-ACK → ACK) ocorreu corretamente nas duas capturas, sem anomalias na camada de transporte — a diferença não está em *se* o handshake aconteceu, mas em *como* ele foi montado.
+ **O que se comportou como esperado:** o three-way handshake TCP (SYN → SYN-ACK → ACK) ocorreu corretamente nas duas capturas, sem anomalias na camada de transporte — a diferença não está em *se* o handshake aconteceu, mas em *como* ele foi montado.
 
-🚩 **O que foi inesperado:**
+ **O que foi inesperado:**
 - No ARP, um único MAC (`aa:bb:cc:dd:ee:ff`) se anunciando como dono de dois IPs diferentes (`192.168.1.1` e `192.168.1.10`) — assinatura clássica de **ARP Spoofing / Man-in-the-Middle**.
 - No TCP, a ausência total de opções (MSS, WS, SACK_PERM) nos SYNs do cenário de ataque, junto com conexões novas e repetitivas a cada poucos segundos — indício de tráfego gerado por script, e não por navegação humana real.
 
-💡 **Aprendizados:**
+ **Aprendizados:**
 - Numa rede saudável, IP e MAC mantêm uma relação **estável**; um IP "trocando" de MAC é o sinal mais confiável de ARP Spoofing.
 - A **estrutura** de um pacote TCP (tamanho, opções, frequência de novas conexões) pode denunciar tráfego automatizado, mesmo sem olhar o conteúdo da conversa.
 - O próprio Wireshark ajuda na detecção automática: *Analyze > Expert Information* sinaliza esse tipo de conflito como **"Duplicate IP address configured"**.
 
 ---
+🔁 Como reproduzir
+
+1. Abra o Wireshark e selecione a interface de rede ativa (Ethernet ou Wi-Fi).
+2. Inicie a captura **sem filtro** (*Start Capturing*).
+3. Gere tráfego de propósito: acesse um site no navegador e dê um ping no gateway (`ping <IP do gateway>`, obtido via `ipconfig` no Windows).
+4. Após 1–2 minutos, pare a captura e salve como `.pcapng` (*File > Save As*).
+5. Aplique os filtros de exibição, um de cada vez, e compare com os prints acima:
+   - `arp` → confira se cada IP aponta sempre para o mesmo MAC.
+   - `tcp.flags.syn == 1` → confira o tamanho dos pacotes e se aparecem opções TCP (clique em cada SYN e expanda "Transmission Control Protocol > Options").
